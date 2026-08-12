@@ -15,10 +15,18 @@ LABEL php.version="${PHP_VERSION}"
 USER root
 
 # --- Runtime-Systempakete (bleiben im Image) ---
+# imagemagick-heic: Alpine liefert die ImageMagick-Delegaten als eigene Pakete
+# aus. Ohne dieses Paket kennt ImageMagick das Format zwar dem Namen nach
+# (Imagick::queryFormats('HEI*') listet es), kann es aber weder lesen noch
+# schreiben — jeder Lesevorgang scheitert mit "no decode delegate". iPhones
+# fotografieren standardmäßig in HEIC, also trifft das den häufigsten Upload.
+# Im selben apk-Aufruf wie imagemagick, damit die Versionen zusammenpassen;
+# libheif zieht apk als Abhängigkeit mit.
 RUN apk add --no-cache --update \
       ffmpeg \
       mysql-client \
       imagemagick \
+      imagemagick-heic \
       ghostscript \
       libpng libjpeg-turbo freetype libwebp \
       gmp \
@@ -64,3 +72,23 @@ RUN set -eux; \
     done; \
     if [ -n "$MISSING" ]; then echo "FEHLENDE EXTENSIONS:$MISSING"; php -m; exit 1; fi; \
     echo "Alle Pflicht-Extensions vorhanden."
+
+# --- Assertion: HEIC-Delegat muss vorhanden sein ---
+# `Imagick::queryFormats('HEI*')` genügt als Prüfung NICHT — es listet HEIC
+# auch dann, wenn der Delegat fehlt. Genau daran ist es hier unbemerkt
+# gescheitert: der Name war da, das Dekodieren nicht.
+# Geprüft wird deshalb, dass das Paket wirklich installiert ist. Ein Round-Trip
+# über Imagick wäre verlockend, taugt aber nicht: HEIC zu SCHREIBEN braucht
+# zusätzlich einen HEVC-Encoder, den Alpine nicht zwingend mitliefert — ein
+# Schreibtest würde den Build grundlos brechen, obwohl Lesen genügt (die
+# Anwendung dekodiert Uploads und schreibt JPEG).
+# Die Delegat-Liste wird zusätzlich ins Build-Log geschrieben, ohne den Build
+# davon abhängig zu machen; ihr Format ist zwischen ImageMagick-Versionen
+# nicht stabil genug für eine harte Bedingung.
+RUN set -eux; \
+    apk info -e imagemagick-heic > /dev/null \
+      || { echo "FEHLER: Paket imagemagick-heic ist nicht installiert."; exit 1; }; \
+    echo "--- ImageMagick-Delegaten (zur Sichtkontrolle im Build-Log) ---"; \
+    { magick -list format 2>/dev/null || identify -list format 2>/dev/null || true; } \
+      | grep -iE '^[[:space:]]*(JPEG|PNG|WEBP|HEIC|HEIF)' || true; \
+    echo "imagemagick-heic installiert."
