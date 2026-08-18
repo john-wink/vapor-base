@@ -97,7 +97,7 @@ jobs:
             VAPOR_TAG=${{ steps.meta.outputs.vapor_tag }}
             PHP_VERSION=${{ matrix.php }}
             __VAPOR_RUNTIME=${{ matrix.arch.runtime }}
-            FFMPEG_ASSERT_MAJOR=${{ matrix.php == '8.5' && '7' || '' }}
+            FFMPEG_ASSERT_MAJOR=${{ matrix.php == '8.5' && '8' || '' }}
           tags: ${{ steps.meta.outputs.tags }}
           cache-from: type=gha,scope=${{ steps.meta.outputs.vapor_tag }}
           cache-to: type=gha,mode=max,scope=${{ steps.meta.outputs.vapor_tag }}

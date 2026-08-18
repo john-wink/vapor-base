@@ -105,7 +105,9 @@ RUN set -eux; \
 #    Zusicherung nicht ab; der erste Lauf hat das prompt bewiesen: php82
 #    liefert 6.1.2). Bumpt Alpine die Linie, bricht der Build — der Bump wird
 #    dann BEWUSST im Workflow gemacht und gegen die CI-Seite geprüft
-#    (laravel-ci spiegelt BtbN n8.1 als ffmpeg-mirror-Release).
+#    (laravel-ci spiegelt BtbN n8.1 als ffmpeg-mirror-Release; seit dem
+#    Upstream-Bump von laravelphp/vapor:php85 auf Alpine mit ffmpeg 8.1.2
+#    liegen CI und Produktion beide auf der 8.1-Linie).
 # 2. Die Probe ist eine ECHTE iPhone-HEIC (item-basiertes HEIF) aus der
 #    App-Testsuite (tests/Fixtures/sample-iphone-photo.heic) — exakt der
 #    Transkodier-Pfad, den ImageMediaConverter in Produktion fährt
