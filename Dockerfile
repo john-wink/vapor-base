@@ -99,20 +99,30 @@ RUN set -eux; \
 # 6.1 ohne HEIF-Demuxer) die Chat-Medien-Pipeline gebrochen. Dieser Block
 # macht aus stillem Drift einen lauten Build-Fehler:
 #
-# 1. Versionslinie gepinnt auf 7.x. Bumpt Alpine auf 8.x, bricht der Build —
-#    der Bump wird dann BEWUSST gemacht (Pattern hier anpassen, CI-Seite
-#    gegenprüfen: laravel-ci spiegelt BtbN n8.1 als ffmpeg-mirror-Release).
+# 1. Versionslinie gepinnt via FFMPEG_ASSERT_MAJOR (der Workflow setzt sie
+#    NUR für die 8.5-Linie, die app-ys production/staging trägt — ältere
+#    Vapor-Basen sitzen auf älterem Alpine mit ffmpeg 6.x und geben diese
+#    Zusicherung nicht ab; der erste Lauf hat das prompt bewiesen: php82
+#    liefert 6.1.2). Bumpt Alpine die Linie, bricht der Build — der Bump wird
+#    dann BEWUSST im Workflow gemacht und gegen die CI-Seite geprüft
+#    (laravel-ci spiegelt BtbN n8.1 als ffmpeg-mirror-Release).
 # 2. Die Probe ist eine ECHTE iPhone-HEIC (item-basiertes HEIF) aus der
 #    App-Testsuite (tests/Fixtures/sample-iphone-photo.heic) — exakt der
 #    Transkodier-Pfad, den ImageMediaConverter in Produktion fährt
 #    (HEIC → JPEG). `ffmpeg -version` allein genügt NICHT: die Fähigkeit
 #    hängt an einkompilierten Demuxern/Decodern, nicht an der Versionsnummer.
+ARG FFMPEG_ASSERT_MAJOR=""
 COPY assets/sample-iphone-photo.heic /tmp/heic-probe.heic
 RUN set -eux; \
     ffmpeg -version | head -1; \
-    ffmpeg -version | head -1 | grep -Eq '^ffmpeg version 7\.' \
-      || { echo "FEHLER: ffmpeg ist nicht mehr Versionslinie 7.x — bewusst bumpen (Kommentar oben)."; exit 1; }; \
-    ffmpeg -hide_banner -y -i /tmp/heic-probe.heic -frames:v 1 /tmp/heic-probe.jpg \
-      || { echo "FEHLER: ffmpeg kann iPhone-HEIC nicht nach JPEG dekodieren."; exit 1; }; \
-    rm -f /tmp/heic-probe.heic /tmp/heic-probe.jpg; \
-    echo "ffmpeg 7.x mit HEIC-Dekodierung bestätigt."
+    if [ -z "${FFMPEG_ASSERT_MAJOR}" ]; then \
+      echo "ffmpeg-Assertion übersprungen (FFMPEG_ASSERT_MAJOR leer — dieses Image gibt keine HEIC-Zusicherung ab)."; \
+      rm -f /tmp/heic-probe.heic; \
+    else \
+      ffmpeg -version | head -1 | grep -Eq "^ffmpeg version ${FFMPEG_ASSERT_MAJOR}\." \
+        || { echo "FEHLER: ffmpeg ist nicht mehr Versionslinie ${FFMPEG_ASSERT_MAJOR}.x — bewusst bumpen (Kommentar oben)."; exit 1; }; \
+      ffmpeg -hide_banner -y -i /tmp/heic-probe.heic -frames:v 1 /tmp/heic-probe.jpg \
+        || { echo "FEHLER: ffmpeg kann iPhone-HEIC nicht nach JPEG dekodieren."; exit 1; }; \
+      rm -f /tmp/heic-probe.heic /tmp/heic-probe.jpg; \
+      echo "ffmpeg ${FFMPEG_ASSERT_MAJOR}.x mit HEIC-Dekodierung bestätigt."; \
+    fi
