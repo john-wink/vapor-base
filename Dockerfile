@@ -92,3 +92,27 @@ RUN set -eux; \
     { magick -list format 2>/dev/null || identify -list format 2>/dev/null || true; } \
       | grep -iE '^[[:space:]]*(JPEG|PNG|WEBP|HEIC|HEIF)' || true; \
     echo "imagemagick-heic installiert."
+
+# --- Assertion: ffmpeg-Versionslinie + echte HEIC-Dekodier-Fähigkeit ---
+# ffmpeg kommt als floatendes `apk add ffmpeg` — Alpine bestimmt die Version.
+# Am 17.08.2026 hat genau so ein stiller Versions-Unterschied (CI-Ubuntu apt
+# 6.1 ohne HEIF-Demuxer) die Chat-Medien-Pipeline gebrochen. Dieser Block
+# macht aus stillem Drift einen lauten Build-Fehler:
+#
+# 1. Versionslinie gepinnt auf 7.x. Bumpt Alpine auf 8.x, bricht der Build —
+#    der Bump wird dann BEWUSST gemacht (Pattern hier anpassen, CI-Seite
+#    gegenprüfen: laravel-ci spiegelt BtbN n8.1 als ffmpeg-mirror-Release).
+# 2. Die Probe ist eine ECHTE iPhone-HEIC (item-basiertes HEIF) aus der
+#    App-Testsuite (tests/Fixtures/sample-iphone-photo.heic) — exakt der
+#    Transkodier-Pfad, den ImageMediaConverter in Produktion fährt
+#    (HEIC → JPEG). `ffmpeg -version` allein genügt NICHT: die Fähigkeit
+#    hängt an einkompilierten Demuxern/Decodern, nicht an der Versionsnummer.
+COPY assets/sample-iphone-photo.heic /tmp/heic-probe.heic
+RUN set -eux; \
+    ffmpeg -version | head -1; \
+    ffmpeg -version | head -1 | grep -Eq '^ffmpeg version 7\.' \
+      || { echo "FEHLER: ffmpeg ist nicht mehr Versionslinie 7.x — bewusst bumpen (Kommentar oben)."; exit 1; }; \
+    ffmpeg -hide_banner -y -i /tmp/heic-probe.heic -frames:v 1 /tmp/heic-probe.jpg \
+      || { echo "FEHLER: ffmpeg kann iPhone-HEIC nicht nach JPEG dekodieren."; exit 1; }; \
+    rm -f /tmp/heic-probe.heic /tmp/heic-probe.jpg; \
+    echo "ffmpeg 7.x mit HEIC-Dekodierung bestätigt."
