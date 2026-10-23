@@ -46,7 +46,7 @@ jobs:
 
       - name: Checkout
         if: steps.gate.outputs.skip == 'false'
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Set up Buildx
         if: steps.gate.outputs.skip == 'false'
