@@ -7,7 +7,7 @@ FROM laravelphp/vapor:${VAPOR_TAG}
 ARG PHP_VERSION=8.5
 ARG IMAGICK_VERSION=3.8.1
 ARG EXCIMER_VERSION=1.2.6
-ARG BROTLI_VERSION=0.20.0
+ARG BROTLI_VERSION=0.21.0
 
 LABEL org.opencontainers.image.source="https://github.com/john-wink/vapor-base"
 LABEL php.version="${PHP_VERSION}"
